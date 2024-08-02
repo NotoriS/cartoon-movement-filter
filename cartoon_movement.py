@@ -111,7 +111,10 @@ while cap.isOpened():
             break
         cumulative_mask = cv2.add(cumulative_mask, queued_line_masks[i])
 
-    frame[cumulative_mask > 0] = (200, 200, 200)
+    colored_mask = np.zeros_like(frame)
+    colored_mask[cumulative_mask > 0] = (255, 255, 255)
+    colored_mask = cv2.GaussianBlur(colored_mask, (7, 7), 0.8)
+    frame = cv2.add(colored_mask, frame)
 
     out.write(frame)
 
