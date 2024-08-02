@@ -39,6 +39,10 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 
+# Calculate values to later add delay and lifetime to the speed lines
+new_masks_skipped = round(fps * SPEED_LINE_APPEARANCE_DELAY)
+masks_drawn_per_frame = round(fps * SPEED_LINE_LIFETIME)
+
 os.makedirs('out', exist_ok=True)
 os.chdir('./out/')
 
@@ -46,6 +50,7 @@ fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(output_video_name, fourcc, fps, (frame_w, frame_h), isColor=True)
 
 recent_gray_frames = []
+queued_line_masks = []
 iteration = -1
 while cap.isOpened():
     iteration = iteration + 1
@@ -53,9 +58,6 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
-
-    if iteration == 0:
-        mask = np.zeros_like(frame)
 
     # Apply adaptive background subtraction to original frame 
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -74,7 +76,6 @@ while cap.isOpened():
         continue
 
     if (iteration - BG_SUBTRACTION_FRAME_COUNT - 1) % round(fps * TRACKING_POINT_RESELECTION_DELAY) == 0:
-        mask = np.zeros_like(frame)
         # Apply corner detection in order to find features to track using the Lucas-Kanade method
         p0 = cv2.goodFeaturesToTrack(old_no_bg_frame, mask = None, **cd_params)
     else:
@@ -89,15 +90,30 @@ while cap.isOpened():
     # Calculate the optical flow the Lucas-Kanade method
     p1, st, _ = cv2.calcOpticalFlowPyrLK(old_no_bg_frame, no_bg_frame, p0, None, **lk_params)
 
+    # Draw the lines created by the movement this frame on a mask
     good_new = p1[st == 1]
     good_old = p0[st == 1]
-
+    line_mask = np.zeros_like(no_bg_frame)
     for new, old in zip(good_new, good_old):
         a, b = new.ravel()
         c, d = old.ravel()
-        mask = cv2.line(mask, (int(a), int(b)), (int(c), int(d)), (150, 150, 150), 1)
+        line_mask = cv2.line(line_mask, (int(a), int(b)), (int(c), int(d)), 1, 1)
 
-    out.write(cv2.add(mask, frame))
+    # Add the lines calculated this frame to the list of lines to be drawn
+    queued_line_masks.insert(0, line_mask)
+    if len(queued_line_masks) > new_masks_skipped + masks_drawn_per_frame:
+        queued_line_masks.pop()
+
+    # Draw all of the currently queued line masks except for the newest few
+    cumulative_mask = np.zeros_like(line_mask)
+    for i in range(new_masks_skipped, new_masks_skipped + masks_drawn_per_frame):
+        if i >= len(queued_line_masks):
+            break
+        cumulative_mask = cv2.add(cumulative_mask, queued_line_masks[i])
+
+    frame[cumulative_mask > 0] = (200, 200, 200)
+
+    out.write(frame)
 
 cap.release()
 out.release()
