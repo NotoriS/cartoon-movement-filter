@@ -7,7 +7,7 @@ SPEED_LINE_APPEARANCE_DELAY = 0.2
 SPEED_LINE_LIFETIME = 0.5
 TRACKING_POINT_RESELECTION_DELAY = 0.4
 
-BG_SUBTRACTION_MEANS = 5
+BG_SUBTRACTION_FRAME_COUNT = 5
 
 # Parameters for corner detection
 cd_params = dict( 
@@ -60,20 +60,20 @@ while cap.isOpened():
     # Apply adaptive background subtraction to original frame 
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     recent_gray_frames.append(gray_frame)
-    if len(recent_gray_frames) > BG_SUBTRACTION_MEANS:
+    if len(recent_gray_frames) > BG_SUBTRACTION_FRAME_COUNT:
         recent_gray_frames.pop(0)
     else:
         out.write(frame)
         continue
     median = np.median(np.stack(recent_gray_frames, axis=0), axis=0).astype(np.uint8)
-    if iteration > BG_SUBTRACTION_MEANS:
+    if iteration > BG_SUBTRACTION_FRAME_COUNT:
         old_no_bg_frame = no_bg_frame
     no_bg_frame = cv2.absdiff(gray_frame, median)
-    if (iteration < BG_SUBTRACTION_MEANS + 1):
+    if (iteration < BG_SUBTRACTION_FRAME_COUNT + 1):
         out.write(frame)
         continue
 
-    if (iteration - BG_SUBTRACTION_MEANS - 1) % round(fps * TRACKING_POINT_RESELECTION_DELAY) == 0:
+    if (iteration - BG_SUBTRACTION_FRAME_COUNT - 1) % round(fps * TRACKING_POINT_RESELECTION_DELAY) == 0:
         mask = np.zeros_like(frame)
         # Apply corner detection in order to find features to track using the Lucas-Kanade method
         p0 = cv2.goodFeaturesToTrack(old_no_bg_frame, mask = None, **cd_params)
