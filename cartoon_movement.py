@@ -9,21 +9,6 @@ TRACKING_POINT_RESELECTION_DELAY = 0.4
 
 BG_SUBTRACTION_FRAME_COUNT = 5
 
-# Define parameters for Shi-Tomasi corner detection
-cd_params = dict( 
-    maxCorners = 200,
-    qualityLevel = 0.05,
-    minDistance = 9,
-    blockSize = 7
-)
-
-# Define parameters for Lucas-Kanade optical flow
-lk_params = dict(
-    winSize  = (21, 21),
-    maxLevel = 5,
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)
-)
-
 # Fetch input filename and create output filename
 input_video_name = sys.argv[1]
 split_video_name = input_video_name.split('.')
@@ -40,6 +25,21 @@ cap = cv2.VideoCapture(input_video_name)
 fps = cap.get(cv2.CAP_PROP_FPS)
 frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+
+# Define parameters for Shi-Tomasi corner detection
+cd_params = dict( 
+    maxCorners = 200,
+    qualityLevel = 0.05,
+    minDistance = max(frame_w, frame_h) // 100,
+    blockSize = 7
+)
+
+# Define parameters for Lucas-Kanade optical flow
+lk_params = dict(
+    winSize  = (21, 21),
+    maxLevel = 10,
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)
+)
 
 # Calculate values to later add delay and lifetime to the speed lines
 new_masks_skipped = round(fps * SPEED_LINE_APPEARANCE_DELAY)
