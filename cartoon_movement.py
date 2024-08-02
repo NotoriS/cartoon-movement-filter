@@ -9,7 +9,7 @@ TRACKING_POINT_RESELECTION_DELAY = 0.4
 
 BG_SUBTRACTION_FRAME_COUNT = 5
 
-# Parameters for Shi-Tomasi corner detection
+# Define parameters for Shi-Tomasi corner detection
 cd_params = dict( 
     maxCorners = 200,
     qualityLevel = 0.05,
@@ -17,7 +17,7 @@ cd_params = dict(
     blockSize = 7
 )
 
-# Parameters for Lucas-Kanade optical flow
+# Define parameters for Lucas-Kanade optical flow
 lk_params = dict(
     winSize  = (21, 21),
     maxLevel = 5,
