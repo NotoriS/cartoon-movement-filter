@@ -8,6 +8,9 @@ SPEED_LINE_APPEARANCE_DELAY = 0.2
 SPEED_LINE_LIFETIME = 0.5
 TRACKING_POINT_RESELECTION_DELAY = 0.4
 
+BG_SUBTRACTION_MEANS = 5
+MOVING_EDGE_THRESHOLD = 30
+
 # Parameters for lucas kanade optical flow
 lk_params = dict(
     winSize  = (21, 21),
@@ -36,8 +39,7 @@ os.chdir('./out/')
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(output_video_name, fourcc, fps, (frame_w, frame_h), isColor=True)
 
-bg_subtractor = cv2.bgsegm.createBackgroundSubtractorMOG()
-
+recent_gray_frames = []
 iteration = -1
 while cap.isOpened():
     iteration = iteration + 1
@@ -50,11 +52,20 @@ while cap.isOpened():
         mask = np.zeros_like(frame)
 
     # Apply adaptive background subtraction to original frame 
-    # and blur it to expand the movement region.
-    if iteration > 0:
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    recent_gray_frames.append(gray_frame)
+    if len(recent_gray_frames) > BG_SUBTRACTION_MEANS:
+        recent_gray_frames.pop(0)
+    else:
+        out.write(frame)
+        continue
+    median = np.median(np.stack(recent_gray_frames, axis=0), axis=0).astype(np.uint8)
+    if iteration > BG_SUBTRACTION_MEANS:
         old_no_bg_frame = no_bg_frame
-    no_bg_frame = bg_subtractor.apply(frame)
-    no_bg_frame_blurred = cv2.GaussianBlur(no_bg_frame, (7, 7), 5)
+    no_bg_frame = cv2.absdiff(gray_frame, median)
+    if (iteration < BG_SUBTRACTION_MEANS + 1):
+        out.write(frame)
+        continue
 
     # Blur the oringal frame in order to acheive better results from edge detection
     blurred_frame = cv2.GaussianBlur(frame, (3, 3), 1)
@@ -64,9 +75,10 @@ while cap.isOpened():
 
     # Narrow down the detected edges to the ones that are moving
     moving_edges = np.zeros_like(edge_frame)
-    moving_edges[no_bg_frame_blurred > 0] = edge_frame[no_bg_frame_blurred > 0]
+    moving_edges[no_bg_frame > MOVING_EDGE_THRESHOLD] = edge_frame[no_bg_frame > MOVING_EDGE_THRESHOLD]
 
-    if iteration % round(fps * TRACKING_POINT_RESELECTION_DELAY) == 0 or len(p0) == 0:
+    if (iteration - BG_SUBTRACTION_MEANS - 1) % round(fps * TRACKING_POINT_RESELECTION_DELAY) == 0:
+        mask = np.zeros_like(frame)
         # Reselect lucas-kanade tracking points to account for new on-screen objects
         p0 = np.argwhere(moving_edges > 0)
         p0 = p0[:, np.newaxis, :].astype(np.float32)
@@ -88,7 +100,7 @@ while cap.isOpened():
     for new, old in zip(good_new, good_old):
         a, b = new.ravel()
         c, d = old.ravel()
-        mask = cv2.line(mask, (int(a), int(b)), (int(c), int(d)), (200, 200, 200), 1)
+        mask = cv2.line(mask, (int(a), int(b)), (int(c), int(d)), (150, 150, 150), 1)
 
     out.write(cv2.add(mask, frame))
 
