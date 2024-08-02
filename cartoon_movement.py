@@ -11,7 +11,15 @@ TRACKING_POINT_RESELECTION_DELAY = 0.4
 BG_SUBTRACTION_MEANS = 5
 MOVING_EDGE_THRESHOLD = 30
 
-# Parameters for lucas kanade optical flow
+# Parameters for corner detection
+feature_params = dict( 
+    maxCorners = 100,
+    qualityLevel = 0.01,
+    minDistance = 7,
+    blockSize = 7
+)
+
+# Parameters for Lucas-Kanade optical flow
 lk_params = dict(
     winSize  = (21, 21),
     maxLevel = 3,
@@ -80,8 +88,9 @@ while cap.isOpened():
     if (iteration - BG_SUBTRACTION_MEANS - 1) % round(fps * TRACKING_POINT_RESELECTION_DELAY) == 0:
         mask = np.zeros_like(frame)
         # Reselect lucas-kanade tracking points to account for new on-screen objects
-        p0 = np.argwhere(moving_edges > 0)
-        p0 = p0[:, np.newaxis, :].astype(np.float32)
+        # p0 = np.argwhere(moving_edges > 0)
+        # p0 = p0[:, np.newaxis, :].astype(np.float32)
+        p0 = cv2.goodFeaturesToTrack(old_no_bg_frame, mask = None, **feature_params)
     else:
         # Continue using previously selected points
         p0 = good_new.reshape(-1, 1, 2)
