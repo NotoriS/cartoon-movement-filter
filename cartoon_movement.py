@@ -32,6 +32,8 @@ if split_video_name[-1] != 'mp4':
     sys.exit()
 split_video_name[-2] = split_video_name[-2] + '_cartoon_movement'
 output_video_name = '.'.join(split_video_name)
+output_video_name = output_video_name.replace('\\', '/')
+output_video_name = output_video_name.split('/')[-1]
 
 # Fetch relevant information about the input video
 cap = cv2.VideoCapture(input_video_name)
