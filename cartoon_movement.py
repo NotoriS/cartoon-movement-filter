@@ -9,18 +9,18 @@ TRACKING_POINT_RESELECTION_DELAY = 0.4
 
 BG_SUBTRACTION_FRAME_COUNT = 5
 
-# Parameters for corner detection
+# Parameters for Shi-Tomasi corner detection
 cd_params = dict( 
     maxCorners = 200,
-    qualityLevel = 0.01,
-    minDistance = 10,
+    qualityLevel = 0.05,
+    minDistance = 9,
     blockSize = 7
 )
 
 # Parameters for Lucas-Kanade optical flow
 lk_params = dict(
     winSize  = (21, 21),
-    maxLevel = 4,
+    maxLevel = 5,
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)
 )
 
@@ -111,6 +111,8 @@ while cap.isOpened():
             break
         cumulative_mask = cv2.add(cumulative_mask, queued_line_masks[i])
 
+    # Convert the cumulative mask to a colored image and convolve it with 
+    # a gaussian kernel to soften and thicken the lines
     colored_mask = np.zeros_like(frame)
     colored_mask[cumulative_mask > 0] = (255, 255, 255)
     colored_mask = cv2.GaussianBlur(colored_mask, (7, 7), 0.8)
