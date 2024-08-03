@@ -3,9 +3,9 @@ import os
 import cv2
 import numpy as np
 
-SPEED_LINE_APPEARANCE_DELAY = 0.2
-SPEED_LINE_LIFETIME = 0.5
-TRACKING_POINT_RESELECTION_DELAY = 0.4
+SPEED_LINE_APPEARANCE_DELAY = 0.1
+SPEED_LINE_LIFETIME = 0.4
+TRACKING_POINT_RESELECTION_DELAY = 0.3
 
 BG_SUBTRACTION_FRAME_COUNT = 5
 
@@ -31,15 +31,19 @@ cd_params = dict(
     maxCorners = 200,
     qualityLevel = 0.05,
     minDistance = max(frame_w, frame_h) // 100,
-    blockSize = 7
+    blockSize = 20
 )
 
 # Define parameters for Lucas-Kanade optical flow
 lk_params = dict(
-    winSize  = (21, 21),
-    maxLevel = 10,
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)
+    winSize  = (frame_w // 30, frame_h // 30),
+    maxLevel = 5,
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 20, 0.01)
 )
+
+# Define minimun and maximum tracked movements per frame
+minimum_movement = (max(frame_w, frame_h) / 1000) - 1
+maximum_movement = max(frame_w, frame_h) / 15
 
 # Calculate values to later add delay and lifetime to the speed lines
 new_masks_skipped = round(fps * SPEED_LINE_APPEARANCE_DELAY)
@@ -99,7 +103,9 @@ while cap.isOpened():
     for new, old in zip(good_new, good_old):
         a, b = new.ravel()
         c, d = old.ravel()
-        line_mask = cv2.line(line_mask, (int(a), int(b)), (int(c), int(d)), 1, 1)
+        distance = np.sqrt((a - c)**2 + (b - d)**2)
+        if minimum_movement <= distance <= maximum_movement:
+            line_mask = cv2.line(line_mask, (int(a), int(b)), (int(c), int(d)), 1, 1)
 
     # Add the lines calculated this frame to the list of lines to be drawn
     queued_line_masks.insert(0, line_mask)
